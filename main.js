@@ -1713,7 +1713,7 @@ function update_curframe(cur_frame) {
     let curFrameElem = document.getElementById("progress-current");
     
     // Calculate percentage for the current frame
-    let curFramePercent = (cur_frame / (MAX_FRAME)) * 100;
+    let curFramePercent = (cur_frame / (MAX_FRAME-1)) * 100;
     curFrameElem.style.width = curFramePercent + "%";
 }
 
@@ -1722,7 +1722,7 @@ function update_buffered(loaded_frame) {
     let bufferedElem = document.getElementById("progress-buffered");
 
     // Calculate percentage for the buffered frame
-    let bufferedPercent = ((loaded_frame+1) / (MAX_FRAME)) * 100;
+    let bufferedPercent = ((loaded_frame+1) / (MAX_FRAME-1)) * 100;
     bufferedElem.style.width = bufferedPercent + "%";
 }
 
