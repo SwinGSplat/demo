@@ -2,14 +2,10 @@ var global_log_1 = {"parse":[], "vertex":[]};
                 // parse_raw_bytes, gs_to_vertex, generate_texture, run_sort
 let cameras = [
     {
-        "id": 0,
-        "img_name": "0/Cam001.jpg",
-        "width": 1019,
-        "height": 745,
         "position": [
             0.007232260564530732,
             0.809987791156739,
-            3.33903731414556
+            5.33903731414556
         ],
         "rotation": [
             [
@@ -198,6 +194,16 @@ function setup_consts(config) {
     console.log("STREAM_ROW_LENGTH", STREAM_ROW_LENGTH);
     VERTEX_ROW_LENGTH = config.VERTEX_ROW_LENGTH;
     defaultViewMatrix = config.INIT_VIEW;
+    cameras[0].rotation = [
+        [defaultViewMatrix[0], defaultViewMatrix[1], defaultViewMatrix[2]],
+        [defaultViewMatrix[4], defaultViewMatrix[5], defaultViewMatrix[6]],
+        [defaultViewMatrix[8], defaultViewMatrix[9], defaultViewMatrix[10]],
+    ]
+    cameras[0].position = [
+        defaultViewMatrix[12],
+        defaultViewMatrix[13],
+        defaultViewMatrix[14],
+    ]
 }
 function GS_TO_VERTEX_COMPACT(gs, full_gs=false) {
     // input list of gs objects
@@ -1543,11 +1549,10 @@ async function main(config) {
     let frameEvents = [];
 
     const frame_ticker = setInterval(() => {
-        if ((loadedFrame < Math.min(curFrame. MAX_FRAME-2)))
+        if ((loadedFrame < Math.min(curFrame, MAX_FRAME-2)))
             {
-                console.log("loaded frame #", loadedFrame);
-            return;
-        }
+                return;
+            }
         if (paused) return;
         let updated = false;
         let reset_slices = [];
