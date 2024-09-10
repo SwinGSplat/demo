@@ -1701,7 +1701,7 @@ async function entry_point() {
 
     const target_config = new URL(
         `config_${params.get("target") || "default"}.json`,
-        "https://huggingface.co/NeutrinoLiu/testGS/raw/main/",
+        atob('aHR0cHM6Ly9odWdnaW5nZmFjZS5jby9OZXV0cmlub0xpdS90ZXN0R1MvcmF3L21haW4v'),
     );
 
     const resp = await fetch(target_config);
