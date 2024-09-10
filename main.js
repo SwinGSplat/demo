@@ -1,3 +1,5 @@
+var global_log_1 = {"parse":[], "vertex":[]};
+                // parse_raw_bytes, gs_to_vertex, generate_texture, run_sort
 let cameras = [
     {
         "id": 0,
@@ -29,131 +31,7 @@ let cameras = [
         "fy": 1834.5526065144063,
         "fx": 1834.8835144895522,
         "frame": 0
-    },
-    {
-        "id": 1,
-        "img_name": "0/Cam009.jpg",
-        "width": 1019,
-        "height": 745,
-        "position": [
-            -0.6165335488790487,
-            0.80852137412157626,
-            3.246431529494429
-        ],
-        "rotation": [
-            [
-                0.9640291111670818,
-                0.005004204478405751,
-                0.2657495639882487
-            ],
-            [
-                0.004274028344180947,
-                -0.999985335592201,
-                0.0033258506080031756
-            ],
-            [
-                0.265762310164777,
-                -0.0020703956365682973,
-                -0.9640363623628463
-            ]
-        ],
-        "fy": 1825.012808725286,
-        "fx": 1825.3419959565524,
-        "frame": 0
-    },
-    {
-        "id": 2,
-        "img_name": "0/Cam017.jpg",
-        "width": 1019,
-        "height": 745,
-        "position": [
-            -1.6304168150914842,
-            0.809851937782668,
-            2.6231187060691143
-        ],
-        "rotation": [
-            [
-                0.7049323660760144,
-                0.002671698432660171,
-                0.7092694983473891
-            ],
-            [
-                -0.0019439873362473955,
-                -0.9999818717734322,
-                0.005698862846190836
-            ],
-            [
-                0.7092718661921595,
-                -0.0053961237928818635,
-                -0.7049143931544477
-            ]
-        ],
-        "fy": 1817.6611443382017,
-        "fx": 1817.989005510805,
-        "frame": 0
-    },
-    {
-        "id": 3,
-        "img_name": "0/Cam025.jpg",
-        "width": 1019,
-        "height": 745,
-        "position": [
-            -2.0113168248144313,
-            0.8078401534316492,
-            2.149913842280183
-        ],
-        "rotation": [
-            [
-                0.4967182043663495,
-                -0.00218371811231741,
-                0.8679091293599089
-            ],
-            [
-                -0.01592531770566215,
-                -0.9998514102028582,
-                0.006598618895572357
-            ],
-            [
-                0.8677657573948417,
-                -0.01709938275380775,
-                -0.49667917351384416
-            ]
-        ],
-        "fy": 1827.9648690495333,
-        "fx": 1828.2945887595636,
-        "frame": 0
-    },
-    {
-        "id": 4,
-        "img_name": "0/Cam033.jpg",
-        "width": 1019,
-        "height": 745,
-        "position": [
-            -2.302752155827769,
-            0.8082668944746969,
-            1012.006391196510424591
-        ],
-        "rotation": [
-            [
-                -0.003999597914543362,
-                0.013100107953590788,
-                0.9999061907939797
-            ],
-            [
-                0.0048216494549179045,
-                -0.9999023124884512,
-                0.013119343610955977
-            ],
-            [
-                0.9999803772640024,
-                0.004873669239157387,
-                0.00393604307540181
-            ]
-        ],
-        "fy": 1824.661597380939,
-        "fx": 1824.990721262354,
-        "frame": 0
-    },
+    }
 ];
 
 
@@ -304,30 +182,27 @@ function translate4(a, x, y, z) {
 var SLICE_NUM
 var TOTAL_CAP
 var SLICE_CAP
-var STREAM_GS_FMT
+var SH_DEGREE
 var STREAM_ROW_LENGTH
 var VERTEX_ROW_LENGTH
 var defaultViewMatrix
+var MAX_FRAME
 
 function setup_consts(config) {
+    MAX_FRAME = config.MAX_FRAME;
     SLICE_NUM = config.SLICE_NUM;
     TOTAL_CAP = config.TOTAL_CAP;
     SLICE_CAP = Math.ceil(TOTAL_CAP / SLICE_NUM);
-    STREAM_GS_FMT = config.STREAM_GS_FMT;
-    STREAM_ROW_LENGTH = 0;
-    for (const [k, v] of Object.entries(STREAM_GS_FMT)) {
-        if (k == "ENDIAN") {
-            continue;
-        }
-        STREAM_ROW_LENGTH += v.length * 4;
-    }
+    STREAM_ROW_LENGTH = config.STREAM_ROW_LENGTH;
+    SH_DEGREE = config.SH_DEGREE;
     console.log("STREAM_ROW_LENGTH", STREAM_ROW_LENGTH);
     VERTEX_ROW_LENGTH = config.VERTEX_ROW_LENGTH;
     defaultViewMatrix = config.INIT_VIEW;
 }
-function GS_TO_VERTEX(gs, full_gs=false) {
+function GS_TO_VERTEX_COMPACT(gs, full_gs=false) {
     // input list of gs objects
     // output buffer of binary data
+    let start = Date.now();
     const buffer = new ArrayBuffer(gs.length * VERTEX_ROW_LENGTH);
     const vertexCount = gs.length;
     console.time("build buffer");
@@ -359,7 +234,7 @@ function GS_TO_VERTEX(gs, full_gs=false) {
         } else {
             frame_spans.push(attrs.end_frame)
         }
-
+        // memory pointer we need to fill
         const position = new Float32Array(buffer, j * VERTEX_ROW_LENGTH, 3);
         const scales = new Float32Array(buffer, j * VERTEX_ROW_LENGTH + 4 * 3, 3);
         const rgba = new Uint8ClampedArray(
@@ -373,96 +248,87 @@ function GS_TO_VERTEX(gs, full_gs=false) {
             4,
         );
 
-        const qlen = Math.sqrt(
-            attrs.rotation[0] ** 2 +
-                attrs.rotation[1] ** 2 +
-                attrs.rotation[2] ** 2 +
-                attrs.rotation[3] ** 2,
-        );
-
-        rot[0] = (attrs.rotation[0] / qlen) * 128 + 128;
-        rot[1] = (attrs.rotation[1] / qlen) * 128 + 128;
-        rot[2] = (attrs.rotation[2] / qlen) * 128 + 128;
-        rot[3] = (attrs.rotation[3] / qlen) * 128 + 128;
-
-        scales[0] = Math.exp(attrs.scaling[0]);
-        scales[1] = Math.exp(attrs.scaling[1]);
-        scales[2] = Math.exp(attrs.scaling[2]);
-
-
+        rot[0] = attrs.rotation[0];
+        rot[1] = attrs.rotation[1];
+        rot[2] = attrs.rotation[2];
+        rot[3] = attrs.rotation[3];
+        scales[0] = attrs.scaling[0];
+        scales[1] = attrs.scaling[1];
+        scales[2] = attrs.scaling[2];
         position[0] = attrs.xyz[0];
         position[1] = attrs.xyz[1];
         position[2] = attrs.xyz[2];
-
-        const SH_C0 = 0.28209479177387814;
-        rgba[0] = (0.5 + SH_C0 * attrs.f_dc[0]) * 255;
-        rgba[1] = (0.5 + SH_C0 * attrs.f_dc[1]) * 255;
-        rgba[2] = (0.5 + SH_C0 * attrs.f_dc[2]) * 255;
-        rgba[3] = (1 / (1 + Math.exp(-attrs.opacity))) * 255;
+        rgba[0] = attrs.color[0];
+        rgba[1] = attrs.color[1];
+        rgba[2] = attrs.color[2];
+        rgba[3] = attrs.opacity;
         
-        // if (j >= 0) {
-        //     console.log("Vertex -------------", j, gs[j].start_frame, gs[j].end_frame);
-        // }
     }
     console.timeEnd("build buffer");
+    let end = Date.now();
+    if (!full_gs) global_log_1["vertex"].push(end - start);
     return {all:new Uint8Array(buffer), spans:frame_spans};
 }
 
-function PARSE_RAW_BYTES(arrayLike) {
+function PARSE_RAW_BYTES_COMPACT(arrayLike) {
+    let start = Date.now();
     const view = new DataView(arrayLike.buffer, arrayLike.byteOffset, arrayLike.byteLength);
     const jsonObjects = [];
-    const sizeOfObject = 100; // total bytes for one object
+    const sizeOfObject = STREAM_ROW_LENGTH; // total bytes for one object
     
     for (let offset = 0; offset < arrayLike.byteLength; offset += sizeOfObject) {
-        const start_frame = view.getUint32(offset, false); // true for little-endian
-        const end_frame = view.getUint32(offset + 4, false);
-        
+        const start_frame = view.getUint16(offset, false); // true for little-endian
+        const end_frame = view.getUint16(offset + 2, false);
+
         const xyz = [
+            view.getFloat32(offset + 4, false),
             view.getFloat32(offset + 8, false),
             view.getFloat32(offset + 12, false),
-            view.getFloat32(offset + 16, false),
         ];
         
-        const f_dc = [
+        const color = [
+            view.getUint8(offset + 16, false),
+            view.getUint8(offset + 17, false),
+            view.getUint8(offset + 18, false),
+        ];
+        const opacity = view.getUint8(offset + 19, false);
+
+        // we dont really need f_rest
+        
+        const scaling = [
             view.getFloat32(offset + 20, false),
             view.getFloat32(offset + 24, false),
             view.getFloat32(offset + 28, false),
         ];
         
-        // we dont really need f_rest
-        const f_rest = NaN;
-
-        const scaling = [
-            view.getFloat32(offset + 68, false),
-            view.getFloat32(offset + 72, false),
-            view.getFloat32(offset + 76, false),
-        ];
-        
         const rotation = [
-            view.getFloat32(offset + 80, false),
-            view.getFloat32(offset + 84, false),
-            view.getFloat32(offset + 88, false),
-            view.getFloat32(offset + 92, false),
+            view.getUint8(offset + 32, false),
+            view.getUint8(offset + 33, false),
+            view.getUint8(offset + 34, false),
+            view.getUint8(offset + 35, false),
         ];
         
-        const opacity = view.getFloat32(offset + 96, false);
         
         jsonObjects.push({
             start_frame,
             end_frame,
             xyz,
-            f_dc,
-            f_rest,
+            color,
+            opacity,
             scaling,
             rotation,
-            opacity,
         });
     }
+    let end = Date.now();
+    global_log_1["parse"].push(end - start);
     return jsonObjects;
 }
 
 function createWorker(self, SLICE_CAP, SLICE_NUM) {
-
+    var global_log_2 = {"sort":[], "texture":[]};
+    function average(arr){
+        return arr.reduce((a,b) => a+b, 0) / arr.length;
+    }
     let buffer;
     let vertexCount = 0;
     let viewProj;
@@ -513,6 +379,7 @@ function createWorker(self, SLICE_CAP, SLICE_NUM) {
     }
 
     function generateTexture() {
+        let start = Date.now();
         if (!buffer) return;
         const f_buffer = new Float32Array(buffer);
         const u_buffer = new Uint8Array(buffer);
@@ -587,7 +454,12 @@ function createWorker(self, SLICE_CAP, SLICE_NUM) {
             texdata[8 * i + 5] = packHalf2x16(4 * sigma[2], 4 * sigma[3]);
             texdata[8 * i + 6] = packHalf2x16(4 * sigma[4], 4 * sigma[5]);
         }
-
+        let end = Date.now();
+        global_log_2["texture"].push(end - start);
+        console.log(`time cost of each step: 
+            sort: ${average(global_log_2["sort"])}ms
+            texture: ${average(global_log_2["texture"])}ms
+            `);
         self.postMessage({ texdata, texwidth, texheight}, [texdata.buffer]);
     }
 
@@ -605,7 +477,7 @@ function createWorker(self, SLICE_CAP, SLICE_NUM) {
         } else {
             lastVertexCount = vertexCount;
         }
-
+        let start = Date.now();
         console.time("sort");
         let maxDepth = -Infinity;
         let minDepth = Infinity;
@@ -637,7 +509,8 @@ function createWorker(self, SLICE_CAP, SLICE_NUM) {
             depthIndex[starts0[sizeList[i]]++] = i;
 
         console.timeEnd("sort");
-
+        let end = Date.now();
+        global_log_2["sort"].push(end - start);
         lastProj = viewProj;
         // put texture update and depth update together
         generateTexture();
@@ -949,18 +822,10 @@ let viewMatrix;
 async function main(config) {
     viewMatrix = defaultViewMatrix;
     let carousel = true;
-    const params = new URLSearchParams(location.search);
     try {
         viewMatrix = JSON.parse(decodeURIComponent(location.hash.slice(1)));
         carousel = false;
     } catch (err) {}
-    // const url = new URL(
-    //     // params.get("url") || "train.splat",
-    //     // "https://huggingface.co/cakewalk/splat-data/resolve/main/",
-    // );
-    //    "https://huggingface.co/NeutrinoLiu/testGS/resolve/main/a02_600.dat"
-    //    "http://127.0.0.1:5500/streamable.dat"
-    //     "http://127.0.0.1:5500/cook_100_5.dat"
     const url = config.MODEL_URL;
     const req = await fetch(url, {
         mode: "cors", // no-cors, *cors, same-origin
@@ -1523,10 +1388,11 @@ async function main(config) {
         if (carousel) {
             let inv = invert4(defaultViewMatrix);
 
-            // const t = Math.sin((Date.now() - start) / 5000);
+            // const t = Math.sin((Date.now() - start) / 1500);
+            // const t = (Date.now() - start) / 1500;
             const t = 0;
-            inv = translate4(inv, 2.5 * t, 0, 6 * (1 - Math.cos(t)));
-            inv = rotate4(inv, -0.6 * t, 0, 1, 0);
+            // inv = translate4(inv, .1*Math.sin(t*Math.PI), 0, .1*Math.cos(t*Math.PI));
+            // inv = rotate4(inv, -0.1 * t, 1, 0, 0);
 
             viewMatrix = invert4(inv);
         }
@@ -1573,50 +1439,22 @@ async function main(config) {
         lastFrame = now;
         requestAnimationFrame(frame);
     };
-
     frame();
 
-    const selectFile = (file) => {
-        const fr = new FileReader();
-        if (/\.json$/i.test(file.name)) {
-            fr.onload = () => {
-                cameras = JSON.parse(fr.result);
-                viewMatrix = getViewMatrix(cameras[0]);
-                projectionMatrix = getProjectionMatrix(
-                    camera.fx / downsample,
-                    camera.fy / downsample,
-                    canvas.width,
-                    canvas.height,
-                );
-                gl.uniformMatrix4fv(u_projection, false, projectionMatrix);
 
-                console.log("Loaded Cameras");
-            };
-            fr.readAsText(file);
-        } else {
-            stopLoading = true;
-            fr.onload = () => {
-                splatData = new Uint8Array(fr.result);
-                console.log("Loaded", Math.floor(splatData.length / rowLength));
+    // const max_fps = 100;
+    // function animate() {
+    // // perform some animation task here
+    // setTimeout(() => {
+    //     frame(Date.now());
+    //     requestAnimationFrame(animate);
+    // }, 1000.0 / max_fps);
+    // }
+    // animate();
 
-                if (
-                    splatData[0] == 112 &&
-                    splatData[1] == 108 &&
-                    splatData[2] == 121 &&
-                    splatData[3] == 10
-                ) {
-                    // ply file magic header means it should be handled differently
-                    worker.postMessage({ ply: splatData.buffer });
-                } else {
-                    worker.postMessage({
-                        buffer: splatData.buffer,
-                        vertexCount: Math.floor(splatData.length / rowLength),
-                    });
-                }
-            };
-            fr.readAsArrayBuffer(file);
-        }
-    };
+
+
+
 
     window.addEventListener("hashchange", (e) => {
         try {
@@ -1632,12 +1470,6 @@ async function main(config) {
     document.addEventListener("dragenter", preventDefault);
     document.addEventListener("dragover", preventDefault);
     document.addEventListener("dragleave", preventDefault);
-    // TODO implement our own drag and drop
-    document.addEventListener("drop", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        selectFile(e.dataTransfer.files[0]);
-    });
 
     let bytesRead = 0;
     let gaussians = [];
@@ -1659,7 +1491,7 @@ async function main(config) {
             }
             value_offset = STREAM_ROW_LENGTH - rowBufferOffset;
             rowBuffer.set(value.slice(0, STREAM_ROW_LENGTH - rowBufferOffset), rowBufferOffset);
-            gaussians.push(PARSE_RAW_BYTES(rowBuffer)[0]);
+            gaussians.push(PARSE_RAW_BYTES_COMPACT(rowBuffer)[0]);
             // console.log("load single gaussian #", gaussians.length);
             bytesRead += STREAM_ROW_LENGTH;
             rowBuffer.fill(0);
@@ -1668,7 +1500,7 @@ async function main(config) {
         // batch parse this read
         value = value.slice(value_offset);
         const num_of_gs = Math.floor(value.length / STREAM_ROW_LENGTH);
-        let parsed = PARSE_RAW_BYTES(value.slice(0, num_of_gs * STREAM_ROW_LENGTH));
+        let parsed = PARSE_RAW_BYTES_COMPACT(value.slice(0, num_of_gs * STREAM_ROW_LENGTH));
         gaussians = gaussians.concat(parsed);
         let value_rest = value.slice(num_of_gs * STREAM_ROW_LENGTH);
         rowBuffer.set(value_rest);
@@ -1679,7 +1511,7 @@ async function main(config) {
     console.log("finished reading");
     /* --------------------------------- step 1 --------------------------------- */
     // post frame 0 to worker
-    let ret = GS_TO_VERTEX(gaussians.slice(0, TOTAL_CAP), full_gs = true);
+    let ret = GS_TO_VERTEX_COMPACT(gaussians.slice(0, TOTAL_CAP), full_gs = true);
     worker.postMessage({
         buffer: ret.all.buffer,
         vertexCount: TOTAL_CAP,
@@ -1693,11 +1525,30 @@ async function main(config) {
     // setup frame ticker
     curFrame ++;
     const FPS = config.FPS;
-    const curFPS= document.getElementById("FPS");
-    curFPS.innerText = FPS;
+
+
+    const pauseBtn = document.getElementById("pause");
+    var paused = 0;
+    pauseBtn.addEventListener("click", () => {
+        paused = !paused;
+        if (paused){
+            pauseBtn.innerText = "⏩ Resume";
+        } else {
+            pauseBtn.innerText = "⏸️ Pause";
+        }
+    })
+    pauseBtn.style.cursor = "pointer";
+
+
     let frameEvents = [];
-    const MAX_FRAME = config.MAX_FRAME;
+
     const frame_ticker = setInterval(() => {
+        if ((loadedFrame < Math.min(curFrame. MAX_FRAME-2)))
+            {
+                console.log("loaded frame #", loadedFrame);
+            return;
+        }
+        if (paused) return;
         let updated = false;
         let reset_slices = [];
         for (let i = 0; i < frameEvents.length; i++){
@@ -1729,20 +1580,26 @@ async function main(config) {
                 {reSort: {
                     reset_slices: reset_slices,
                 }});
-                curFrame++;
+            curFrame++;
+            update_FPS();
+            console.log(`time cost of each step: 
+                parse: ${average(global_log_1["parse"])} ms
+                vertex: ${average(global_log_1["vertex"])} ms
+                `);
         }
 
         if (curFrame >= MAX_FRAME){
             // clearInterval(frame_ticker);
             // return;
             console.log("restart ticker");
-            let ret = GS_TO_VERTEX(init_gs.slice(0, TOTAL_CAP), full_gs = true)
+            let ret = GS_TO_VERTEX_COMPACT(init_gs.slice(0, TOTAL_CAP), full_gs = true)
             worker.postMessage({
                 buffer: ret.all.buffer,
                 vertexCount: TOTAL_CAP,
             });
             curFrame = 1;
         }
+        update_curframe(curFrame);
     }, Math.ceil(1000 / FPS));
 
     /* --------------------------------- step 3 --------------------------------- */
@@ -1753,7 +1610,7 @@ async function main(config) {
     loadedFrame = 0;
     // should not touch rowBuffer and rowBufferOffset
     let data_left = false;
-    const PREFETCH_FRAME = FPS * config.PREFETCH_SEC;
+
     while (bytesRead < SLICE_CAP * STREAM_ROW_LENGTH && loadedFrame < MAX_FRAME) {
         let { done, value } = await reader.read();
         // if there is any reminding fro previous read  
@@ -1766,7 +1623,7 @@ async function main(config) {
             }
             value_offset = STREAM_ROW_LENGTH - rowBufferOffset;
             rowBuffer.set(value.slice(0, STREAM_ROW_LENGTH - rowBufferOffset), rowBufferOffset);
-            gaussians.push(PARSE_RAW_BYTES(rowBuffer)[0]);
+            gaussians.push(PARSE_RAW_BYTES_COMPACT(rowBuffer)[0]);
             // console.log("load single gaussian #", gaussians.length);
             bytesRead += STREAM_ROW_LENGTH;
             rowBuffer.fill(0);
@@ -1779,16 +1636,18 @@ async function main(config) {
         // batch parse this read
         value = value.slice(value_offset);
         const num_of_gs = Math.floor(value.length / STREAM_ROW_LENGTH);
-        let parsed = PARSE_RAW_BYTES(value.slice(0, num_of_gs * STREAM_ROW_LENGTH));
+        let parsed = PARSE_RAW_BYTES_COMPACT(value.slice(0, num_of_gs * STREAM_ROW_LENGTH));
         gaussians = gaussians.concat(parsed);
         let value_rest = value.slice(num_of_gs * STREAM_ROW_LENGTH);
         rowBuffer.set(value_rest);
         rowBufferOffset = value_rest.length;
         bytesRead += num_of_gs * STREAM_ROW_LENGTH;
         
+        const PREFETCH_FRAME = FPS * config.PREFETCH_SEC;
         while (bytesRead >= SLICE_CAP * STREAM_ROW_LENGTH){
             loadedFrame++;
-            let ret = GS_TO_VERTEX(gaussians.splice(0, SLICE_CAP));
+            update_buffered(loadedFrame);
+            let ret = GS_TO_VERTEX_COMPACT(gaussians.splice(0, SLICE_CAP));
             console.log("frame #", loadedFrame, " : spans", ret.spans);
             // frameEvents.push({
             //     frame: loadedFrame,
@@ -1820,16 +1679,27 @@ async function main(config) {
         if (done) {
             break;
         }
-        if (loadedFrame - curFrame > PREFETCH_FRAME){
-            await new Promise(r => setTimeout(r, 10));
-            continue;
-        }
     }
+    const reset_cam_btn = document.getElementById("reset_cam");
+    reset_cam_btn.addEventListener("click", () => {
+        viewMatrix = getViewMatrix(camera);
+    });
 
 }
 
+function average(arr){
+    return arr.reduce((a,b) => a+b, 0) / arr.length;
+}
+
 async function entry_point() {
-    const resp = await fetch("config.json")
+    const params = new URLSearchParams(location.search);
+
+    const target_config = new URL(
+        `config_${params.get("target") || "default"}.json`,
+        "https://huggingface.co/NeutrinoLiu/testGS/raw/main/",
+    );
+
+    const resp = await fetch(target_config);
     const config = await resp.json();
     console.log("config loaded: ", config);
     setup_consts(config);
@@ -1837,6 +1707,41 @@ async function entry_point() {
         document.getElementById("spinner").style.display = "none";
         document.getElementById("message").innerText = err.toString();
     });
+}
+
+function update_curframe(cur_frame) {
+    let curFrameElem = document.getElementById("progress-current");
+    
+    // Calculate percentage for the current frame
+    let curFramePercent = (cur_frame / (MAX_FRAME)) * 100;
+    curFrameElem.style.width = curFramePercent + "%";
+}
+
+// Function to update the buffered (loaded) frame position
+function update_buffered(loaded_frame) {
+    let bufferedElem = document.getElementById("progress-buffered");
+
+    // Calculate percentage for the buffered frame
+    let bufferedPercent = ((loaded_frame+1) / (MAX_FRAME)) * 100;
+    bufferedElem.style.width = bufferedPercent + "%";
+}
+
+var lastFrame = NaN;
+var videoAvgFps = 30;
+function update_FPS() {
+    if (isNaN(lastFrame)){
+        lastFrame = Date.now();
+        return;
+    }
+    let now = Date.now();
+    let currentFps = 1000 / (now - lastFrame) || 0;
+    console.log("passed time: ", now - lastFrame);
+    console.log(currentFps)
+    videoAvgFps = videoAvgFps * 0.9 + currentFps * 0.1;
+
+    const curFPS= document.getElementById("FPS");
+    curFPS.innerText =  Math.ceil(videoAvgFps);
+    lastFrame = now;
 }
 
 entry_point();

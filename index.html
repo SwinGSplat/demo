@@ -12,180 +12,7 @@
 			name="apple-mobile-web-app-status-bar-style"
 			content="black-translucent"
 		/>
-		<style>
-			body {
-				overflow: hidden;
-				margin: 0;
-				height: 100vh;
-				width: 100vw;
-				font-family: sans-serif;
-				background: black;
-    			text-shadow: 0 0 3px black;
-			}
-			a, body {
-				color: white;
-			}
-			#info {
-				z-index: 100;
-				position: absolute;
-				top: 10px;
-				left: 15px;
-			}
-			h3 {
-				margin: 5px 0;
-			}
-			p {
-				margin: 5px 0;
-				font-size: small;
-			}
-
-			.cube-wrapper {
-				transform-style: preserve-3d;
-			}
-
-			.cube {
-				transform-style: preserve-3d;
-				transform: rotateX(45deg) rotateZ(45deg);
-				animation: rotation 2s infinite;
-			}
-
-			.cube-faces {
-				transform-style: preserve-3d;
-				height: 80px;
-				width: 80px;
-				position: relative;
-				transform-origin: 0 0;
-				transform: translateX(0) translateY(0) translateZ(-40px);
-			}
-
-			.cube-face {
-				position: absolute;
-				inset: 0;
-				background: #0017ff;
-				border: solid 1px #ffffff;
-			}
-			.cube-face.top {
-				transform: translateZ(80px);
-			}
-			.cube-face.front {
-				transform-origin: 0 50%;
-				transform: rotateY(-90deg);
-			}
-			.cube-face.back {
-				transform-origin: 0 50%;
-				transform: rotateY(-90deg) translateZ(-80px);
-			}
-			.cube-face.right {
-				transform-origin: 50% 0;
-				transform: rotateX(-90deg) translateY(-80px);
-			}
-			.cube-face.left {
-				transform-origin: 50% 0;
-				transform: rotateX(-90deg) translateY(-80px) translateZ(80px);
-			}
-
-			@keyframes rotation {
-				0% {
-					transform: rotateX(45deg) rotateY(0) rotateZ(45deg);
-					animation-timing-function: cubic-bezier(
-						0.17,
-						0.84,
-						0.44,
-						1
-					);
-				}
-				50% {
-					transform: rotateX(45deg) rotateY(0) rotateZ(225deg);
-					animation-timing-function: cubic-bezier(
-						0.76,
-						0.05,
-						0.86,
-						0.06
-					);
-				}
-				100% {
-					transform: rotateX(45deg) rotateY(0) rotateZ(405deg);
-					animation-timing-function: cubic-bezier(
-						0.17,
-						0.84,
-						0.44,
-						1
-					);
-				}
-			}
-
-			.scene,
-			#message {
-				position: absolute;
-				display: flex;
-				top: 0;
-				right: 0;
-				left: 0;
-				bottom: 0;
-				z-index: 2;
-				height: 100%;
-				width: 100%;
-				align-items: center;
-				justify-content: center;
-			}
-			#message {
-				font-weight: bold;
-				font-size: large;
-				color: red;
-				pointer-events: none;
-			}
-
-			details {
-				font-size: small;
-
-			}
-
-			#progress {
-				position: absolute;
-				top: 0;
-				height: 5px;
-				background: blue;
-				z-index: 99;
-				transition: width 0.1s ease-in-out;
-			}
-
-			#quality {
-				position: absolute;
-				bottom: 10px;
-				z-index: 999;
-				right: 10px;
-			}
-
-			#caminfo {
-				position: absolute;
-				top: 10px;
-				z-index: 999;
-				right: 10px;
-			}
-			#canvas {
-				display: block;
-				position: absolute;
-				top: 0;
-				left: 0;
-				width: 100%;
-				height: 100%;
-				touch-action: none;
-			}
-
-			#instructions {
-				background: rgba(0,0,0,0.6);
-				white-space: pre-wrap;
-				padding: 10px;
-				border-radius: 10px;
-				font-size: x-small;
-			}
-			body.nohf .nohf {
-				display: none;
-			}
-			body.nohf #progress, body.nohf .cube-face {
-				background: #ff9d0d;
-			}
-		</style>
+		<link rel="stylesheet" href="styles.css">
 	</head>
 	<body>
 		<script>
@@ -198,13 +25,14 @@
 				By SwinGS group, codes at <a href="https://github.com/SwinGSplat/demo" target="_blank">SwinGSplat</a>
 				<br />Modified from
 				<a href="https://github.com/antimatter15/splat" target="_blank">antimatter15/splat</a>.
+				<br />Dataset from <a href="https://www.actors-hq.com/" target="_blank">ActorsHQ</a>.
 			</small>
 		</p>
 
 			<details>
-			<summary>Use mouse or arrow keys to navigate.</summary>
+				<summary>Use mouse or arrow keys to navigate.</summary>
 
-<div id="instructions">movement (arrow keys)
+				<div id="instructions">movement (arrow keys)
 - left/right arrow keys to strafe side to side
 - up/down arrow keys to move forward/back
 - space to jump
@@ -237,10 +65,7 @@ gamepad
 other
 - press 0-9 to switch to one of the pre-loaded camera views
 - press '-' or '+'key to cycle loaded cameras
-- press p to resume default animation
-- drag and drop .ply file to convert to .splat
-- drag and drop cameras.json to load cameras
-</div>
+				</div>
 
 		</details>
 			
@@ -266,13 +91,24 @@ other
 		<canvas id="canvas"></canvas>
 
 		<div id="quality">
-			frame: <span id="frame"></span> <br />
-			video fps: <span id="FPS"></span> <br />
+			<span id="pause" class="control-btn">⏸️ Pause</span> <br /> 
+			<span id="reset_cam" class="control-btn">🔄 Reset Cam</span> <br />
+			<br />
+			frame: <span id="frame">0</span> <br />
+			stream fps: <span id="FPS">0</span><br />
 			render fps: <span id="fps"></span>
 		</div>
 		<div id="caminfo">
 			<span id="camid"></span>
 		</div>
+		<div class="progress-container">
+			<div class="progress-container-inner">
+			<div class="progress-buffered" id="progress-buffered"></div>
+			<div class="progress-current" id="progress-current"></div>
+			</div>	
+		</div>
+
 		<script src="main.js"></script>
+		
 	</body>
 </html>

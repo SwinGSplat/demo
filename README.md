@@ -1,6 +1,29 @@
 # SwinGS viewer
 WebGL viewer for SwinGS. Originally developed by [antimatter15](https://github.com/antimatter15/splat). Commit history removed for Double-Blind review process.
 
+dataset by:
+```
+@article{isik2023humanrf,
+  title = {HumanRF: High-Fidelity Neural Radiance Fields for Humans in Motion},
+  author = {I\c{s}{\i}k, Mustafa and Rünz, Martin and Georgopoulos, Markos and Khakhulin, Taras
+   and Starck, Jonathan and Agapito, Lourdes and Nießner, Matthias},
+  journal = {ACM Transactions on Graphics (TOG)},
+  volume = {42},
+  number = {4},
+  pages = {1--12},
+  year = {2023},
+  publisher = {ACM New York, NY, USA},
+  doi = {10.1145/3592415},
+  url = {https://doi.org/10.1145/3592415},
+}
+@inproceedings{li2022neural,
+  title={Neural 3d video synthesis from multi-view video},
+  author={Li, Tianye and Slavcheva, Mira and Zollhoefer, Michael and Green, Simon and Lassner, Christoph and Kim, Changil and Schmidt, Tanner and Lovegrove, Steven and Goesele, Michael and Newcombe, Richard and others},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  pages={5521--5531},
+  year={2022}
+}
+```
 
 # splat
 
