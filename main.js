@@ -1614,7 +1614,6 @@ async function main(config) {
     let init_gs = gaussians.splice(0, TOTAL_CAP);
     loadedFrame = 0;
     // should not touch rowBuffer and rowBufferOffset
-    let data_left = false;
 
     while (bytesRead < SLICE_CAP * STREAM_ROW_LENGTH && loadedFrame < MAX_FRAME) {
         let { done, value } = await reader.read();
@@ -1634,8 +1633,7 @@ async function main(config) {
             rowBuffer.fill(0);
             rowBufferOffset = 0
         }
-        if (done) {
-            data_left = value;
+        if (done && isNaN(value)) {
             break;
         }
         // batch parse this read
