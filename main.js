@@ -26,7 +26,6 @@ let cameras = [
         ],
         "fy": 1834.5526065144063,
         "fx": 1834.8835144895522,
-        "frame": 0
     }
 ];
 
@@ -183,7 +182,7 @@ var STREAM_ROW_LENGTH
 var VERTEX_ROW_LENGTH
 var defaultViewMatrix
 var MAX_FRAME
-
+var MINIMAL_BW = 22
 function setup_consts(config) {
     MAX_FRAME = config.MAX_FRAME;
     SLICE_NUM = config.SLICE_NUM;
@@ -204,6 +203,12 @@ function setup_consts(config) {
         defaultViewMatrix[13],
         defaultViewMatrix[14],
     ]
+    cameras[0].fx = config.fx;
+    cameras[0].fy = config.fy;
+    MINIMAL_BW = Math.ceil(config.STREAM_ROW_LENGTH * config.TOTAL_CAP * config.FPS / 1e6 / SLICE_NUM);
+    console.log("MINIMAL_BW", MINIMAL_BW);
+    const min_bw_ele = document.getElementById("min_bw");
+    min_bw_ele.innerHTML = MINIMAL_BW;
 }
 function GS_TO_VERTEX_COMPACT(gs, full_gs=false) {
     // input list of gs objects
@@ -462,7 +467,7 @@ function createWorker(self, SLICE_CAP, SLICE_NUM) {
         }
         let end = Date.now();
         global_log_2["texture"].push(end - start);
-        console.log(`time cost of each step: 
+        console.log(`avg time cost of each step: 
             sort: ${average(global_log_2["sort"])}ms
             texture: ${average(global_log_2["texture"])}ms
             `);
@@ -934,14 +939,19 @@ async function main(config) {
     const resize = () => {
         gl.uniform2fv(u_focal, new Float32Array([camera.fx, camera.fy]));
 
+        let w = config.W;
+        let h = config.H;
+        let ratio = Math.min(innerWidth / w, innerHeight / h);
+        w = innerWidth / ratio;
+        h = innerHeight / ratio;
         projectionMatrix = getProjectionMatrix(
             camera.fx,
             camera.fy,
-            innerWidth,
-            innerHeight,
+            w,
+            h,
         );
 
-        gl.uniform2fv(u_viewport, new Float32Array([innerWidth, innerHeight]));
+        gl.uniform2fv(u_viewport, new Float32Array([w, h]));
 
         gl.canvas.width = Math.round(innerWidth / downsample);
         gl.canvas.height = Math.round(innerHeight / downsample);
@@ -1549,10 +1559,10 @@ async function main(config) {
     let frameEvents = [];
 
     const frame_ticker = setInterval(() => {
-        if ((loadedFrame < Math.min(curFrame, MAX_FRAME-2)))
-            {
-                return;
-            }
+        if ((loadedFrame < Math.min(curFrame, MAX_FRAME-2))) {
+            console.log("loaded:", loadedFrame, " / cur:", curFrame, " / max:", MAX_FRAME);
+            return;
+        }
         if (paused) return;
         let updated = false;
         let reset_slices = [];
@@ -1587,7 +1597,7 @@ async function main(config) {
                 }});
             curFrame++;
             update_FPS();
-            console.log(`time cost of each step: 
+            console.log(`avg time cost of each step: 
                 parse: ${average(global_log_1["parse"])} ms
                 vertex: ${average(global_log_1["vertex"])} ms
                 `);
@@ -1697,19 +1707,17 @@ function average(arr){
 async function entry_point() {
     const params = new URLSearchParams(location.search);
 
-    const target_config = new URL(
+    let target_config = new URL(
         `config_${params.get("target") || "default"}.json`,
         atob('aHR0cHM6Ly9odWdnaW5nZmFjZS5jby9OZXV0cmlub0xpdS90ZXN0R1MvcmF3L21haW4v'),
     );
+    // target_config = "config_act.json";
 
     const resp = await fetch(target_config);
     const config = await resp.json();
     console.log("config loaded: ", config);
     setup_consts(config);
-    main(config).catch((err) => {
-        document.getElementById("spinner").style.display = "none";
-        document.getElementById("message").innerText = err.toString();
-    });
+    main(config);
 }
 
 function update_curframe(cur_frame) {
@@ -1738,8 +1746,6 @@ function update_FPS() {
     }
     let now = Date.now();
     let currentFps = 1000 / (now - lastFrame) || 0;
-    console.log("passed time: ", now - lastFrame);
-    console.log(currentFps)
     videoAvgFps = videoAvgFps * 0.9 + currentFps * 0.1;
 
     const curFPS= document.getElementById("FPS");
@@ -1747,4 +1753,7 @@ function update_FPS() {
     lastFrame = now;
 }
 
-entry_point();
+entry_point().catch((err) => {
+    document.getElementById("spinner").style.display = "none";
+    document.getElementById("message").innerText = err.toString();
+});
