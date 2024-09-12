@@ -1624,7 +1624,10 @@ async function main(config) {
     let init_gs = gaussians.splice(0, TOTAL_CAP);
     loadedFrame = 0;
     // should not touch rowBuffer and rowBufferOffset
-
+    const reset_cam_btn = document.getElementById("reset_cam");
+    reset_cam_btn.addEventListener("click", () => {
+        viewMatrix = getViewMatrix(cameras[0]);
+    });
     while (bytesRead < SLICE_CAP * STREAM_ROW_LENGTH && loadedFrame < MAX_FRAME) {
         let { done, value } = await reader.read();
         // if there is any reminding fro previous read  
@@ -1693,10 +1696,7 @@ async function main(config) {
             break;
         }
     }
-    const reset_cam_btn = document.getElementById("reset_cam");
-    reset_cam_btn.addEventListener("click", () => {
-        viewMatrix = getViewMatrix(camera);
-    });
+
 
 }
 
