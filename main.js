@@ -50,19 +50,29 @@ function getViewMatrix(camera) {
         camera.position[0],
         camera.position[1],
         camera.position[2]];
+    // const camToWorld = [
+    //     [R[0], R[1], R[2], 0],
+    //     [R[3], R[4], R[5], 0],
+    //     [R[6], R[7], R[8], 0],
+    //     [
+    //         -t[0] * R[0] - t[1] * R[3] - t[2] * R[6],
+    //         -t[0] * R[1] - t[1] * R[4] - t[2] * R[7],
+    //         -t[0] * R[2] - t[1] * R[5] - t[2] * R[8],
+    //         1,
+    //     ],
+    // ].flat();
     const camToWorld = [
         [R[0], R[1], R[2], 0],
         [R[3], R[4], R[5], 0],
         [R[6], R[7], R[8], 0],
-        [
-            -t[0] * R[0] - t[1] * R[3] - t[2] * R[6],
-            -t[0] * R[1] - t[1] * R[4] - t[2] * R[7],
-            -t[0] * R[2] - t[1] * R[5] - t[2] * R[8],
-            1,
-        ],
+        [t[0], t[1], t[2], 1],
     ].flat();
     return camToWorld;
 }
+function getViewMatrixDefault(camera) {
+    return defaultViewMatrix;
+}
+
 // function translate4(a, x, y, z) {
 //     return [
 //         ...a.slice(0, 12),
@@ -193,16 +203,18 @@ function setup_consts(config) {
     console.log("STREAM_ROW_LENGTH", STREAM_ROW_LENGTH);
     VERTEX_ROW_LENGTH = config.VERTEX_ROW_LENGTH;
     defaultViewMatrix = config.INIT_VIEW;
-    cameras[0].rotation = [
+    let R = [
         [defaultViewMatrix[0], defaultViewMatrix[1], defaultViewMatrix[2]],
         [defaultViewMatrix[4], defaultViewMatrix[5], defaultViewMatrix[6]],
         [defaultViewMatrix[8], defaultViewMatrix[9], defaultViewMatrix[10]],
     ]
-    cameras[0].position = [
+    let t = [
         defaultViewMatrix[12],
         defaultViewMatrix[13],
         defaultViewMatrix[14],
     ]
+    cameras[0].rotation = R;
+    cameras[0].position = t;
     cameras[0].fx = config.fx;
     cameras[0].fy = config.fy;
     MINIMAL_BW = Math.ceil(config.STREAM_ROW_LENGTH * config.TOTAL_CAP * config.FPS / 1e6 / SLICE_NUM);
@@ -832,7 +844,7 @@ void main () {
 let viewMatrix;
 async function main(config) {
     viewMatrix = defaultViewMatrix;
-    let carousel = true;
+    let carousel = false;
     try {
         viewMatrix = JSON.parse(decodeURIComponent(location.hash.slice(1)));
         carousel = false;
