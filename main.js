@@ -61,6 +61,7 @@ function getViewMatrix(camera) {
     //         1,
     //     ],
     // ].flat();
+    
     const camToWorld = [
         [R[0], R[1], R[2], 0],
         [R[3], R[4], R[5], 0],
