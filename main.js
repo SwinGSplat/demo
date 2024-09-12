@@ -1707,8 +1707,10 @@ function average(arr){
 async function entry_point() {
     const params = new URLSearchParams(location.search);
 
+    const target = params.get("target") || "default";
+    setup_dropdown(target);
     let target_config = new URL(
-        `config_${params.get("target") || "default"}.json`,
+        `config_${target}.json`,
         atob('aHR0cHM6Ly9odWdnaW5nZmFjZS5jby9OZXV0cmlub0xpdS90ZXN0R1MvcmF3L21haW4v'),
     );
     // target_config = "config_act.json";
@@ -1718,6 +1720,19 @@ async function entry_point() {
     console.log("config loaded: ", config);
     setup_consts(config);
     main(config);
+}
+
+function setup_dropdown(target) {
+    const dropdown = document.getElementById("scene_name");
+    for (let i = 0; i < dropdown.options.length; i++) {
+        if (dropdown.options[i].value == target) {
+            dropdown.selectedIndex = i;
+            break;
+        }
+    }
+    dropdown.addEventListener("change", (e) => {
+        location.search = `?target=${e.target.value}`;
+    });
 }
 
 function update_curframe(cur_frame) {
